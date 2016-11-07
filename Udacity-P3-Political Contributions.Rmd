@@ -1,0 +1,162 @@
+An Analysis of Financial Contributions to Presidential Campaigns in Illinois with R - By Tiffany Li
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+library(ggplot2)
+library(dplyr)
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+setwd("~/Desktop/Udacity Nanodegree/P3/data set")
+getwd()
+PC <- read.csv('P1-IL-2.csv', header = TRUE, fill = TRUE)
+```
+
+# Now that we have successfully loaded the dataset and packages, we can take a lot at relevant information about data, such as the structure, data types, column names. We can also display the first few rows to get a better sense of the data.
+# Also, we can find the description of variables in this linke: http://www.fec.gov/finance/disclosure/metadata/DataDictionaryCommitteeMaster.shtml.
+```{r}
+# Exam the data set
+str(PC)
+names(PC)
+head(PC)
+```
+
+# By looking at the data types in the str() function, I detected 5 columns whose data types need to be converted. 'Index' is just an id so we should change it from integer to character. 'Contbr_zip' represents the zipcode of contributor so it should be factor instead of integer. 'Contb_receipt_amt' is the amount contributed therefore needs to be represented in numeric form instead of factor. 'File_num' is the file number and should be converted tfrom integer to factor. Lastly, I think character is a better way than factor to represent 'Tran_id', which is transaction ID and has unique value for each row.
+```{r}
+# Convert data types if neccessary
+PC$index <- as.character(PC$index)
+PC$contbr_zip <- as.factor(PC$contbr_zip)
+PC$contb_receipt_amt <- as.numeric(as.character(PC$contb_receipt_amt))
+PC$contb_receipt_dt <- as.Date(PC$contb_receipt_dt, format = "%d-%b-%y")
+PC$file_num <- as.factor(PC$file_num)
+PC$tran_id <- as.character(PC$tran_id)
+
+```
+
+# Now that we have all the correct data types, we can look at the summary statistics to get a rough idea of the data.
+```{r}
+# Exam average contribution for each candidate
+summary(PC$cand_nm)
+summary(PC$contbr_nm)
+summary(PC$contbr_city)
+summary(PC$contbr_zip)
+summary(PC$contbr_employer)
+summary(PC$contbr_occupation)
+summary(PC$contb_receipt_amt)
+summary(PC$contb_receipt_dt)
+summary(PC$contb_receipt_desc)
+summary(PC$memo_cd)
+summary(PC$memo_text)
+summary(PC$election_tp)
+```
+# By simply looking at the summary statistics, we already learnt a great amount of information about our data set. We could see how many contributions each candidate received, how many contributions were from each contributor, city, zip code, emoployer and occupation, summary statistics of contribution amount, the dates of contribution, amount of contributions made to primary and general election. Lastly, from looking at the memo we can distinguish the earmarked contribution, super-pac, in-kind donation, reattribution/redesignation and refunds.
+
+
+
+# Univariate Plots Section
+# Let's further understand the data by visualization.
+```{r echo=FALSE, Univariate_Plots}
+
+library(stringr)
+
+# Visualize boxplot for amount of contributions received for each candidate
+ggplot(aes(x = cand_nm, y = contb_receipt_amt), data = PC) +
+  geom_boxplot() +
+  coord_flip() +
+  ylim(0, 6000)
+
+# Visualize total contribution amount for each candidate
+ggplot(aes(x = cand_nm, y = contb_receipt_amt, color = election_tp), data = PC) +
+  stat_summary_bin(aes(y = contb_receipt_amt), fun.y = 'sum', geom = 'bar') +
+  coord_flip()
+
+# Visualize the median contribution amount for each candidate
+ggplot(aes(x = cand_nm, y = contb_receipt_amt), data = PC) +
+  stat_summary_bin(aes(y = contb_receipt_amt), fun.y = 'median', geom = 'bar') +
+  coord_flip()
+
+
+```
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+### What is/are the main feature(s) of interest in your dataset?
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+
+### Did you create any new variables from existing variables in the dataset?
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+
+
+
+# Bivariate Plots Section
+```{r echo=FALSE, Bivariate_Plots}
+
+```
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+
+### What was the strongest relationship you found?
+
+
+
+
+# Multivariate Plots Section
+
+```{r echo=FALSE, Multivariate_Plots}
+
+```
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+
+### Were there any interesting or surprising interactions between features?
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+
+```
+
+### Description One
+
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+
+```
+
+### Description Two
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+
+```
+
+### Description Three
+
+------
+
+# Reflection
