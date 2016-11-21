@@ -21,7 +21,7 @@ getwd()
 PC <- read.csv('P1-IL-2.csv', header = TRUE, fill = TRUE)
 ```
 
-#### Now that we have successfully loaded the dataset and packages, we can take a lot at relevant information about data, such as the structure, data types, column names. We can also display the first few rows to get a better sense of the data.
+#### Now that we have successfully loaded the dataset and packages, we can take a look at a lot of relevant information about data, such as the structure, data types, column names. We can also display the first few rows to get a better sense of the data.
 #### Also, the description of variables can be found in this link: ftp://ftp.fec.gov/FEC/Presidential_Map/2016/DATA_DICTIONARIES/CONTRIBUTOR_FORMAT.txt
 ```{r}
 # Exam the dataset
@@ -165,16 +165,23 @@ ggplot(aes(x = reorder_size(contbr_occupation)), data = PC) +
 
 #### What is first quantile, median and third quantile of the contribution amount?
 ```{r echo=FALSE, Univariate_Plots}
+summary(PC$contb_receipt_amt)
+
 ggplot(aes(x = 1, y = contb_receipt_amt), data = PC) +
   geom_boxplot() +
   scale_y_log10()
 ```
+#### The first quantile of contribution is $15, median is $27 and the third quantile is $100.
 
 #### How many contributions were made to primary election and general election?
 ```{r echo=FALSE, Univariate_Plots}
+table(PC$election_tp)
+
 ggplot(aes(x = election_tp), data = PC) +
   geom_bar()
 ```
+#### 44923 contributions were made to primary elections and 20545 contributions were made to general elections.
+
 #### It is apparent that more contributions were made to primary elections than general elections. 
 
 #### How many contributions were made to different political parties?
@@ -193,16 +200,16 @@ str(PC)
 
 
 ### What is/are the main feature(s) of interest in your dataset?
-#### I am mainly interested in the following features: candidate name, contribution receipt amount, since the most interesting topic is analyzing the amount of contributions received by candidates.
+#### I am mainly interested in the following features: candidate name and contribution receipt amount, since the most interesting topic is analyzing the amount of contributions received by candidates.
 
 ### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
-#### Features like contributor name, contributor city, contributor zipcode, contributor employer, contributor occupation, contribution, election type, candidate's political party can provide further insights of the dataset. We can find relationship between these features and the features I mentioned in the last question. For example, we can try to determine if occupation has an effect on contribution amount.
+#### Features like contributor name, contributor city, contributor zipcode, contributor employer, contributor occupation, contribution, election type, candidate's political party can provide further insights of the dataset. We can find relationship between these features and the features I mentioned in the last question. For example, we can try to determine if candidate's political party has an effect on contribution amount.
 
 ### Did you create any new variables from existing variables in the dataset?
 #### I created a new variable cand_nm_party, which is the candidate's party information(e.g: Democrat, Republican etc) in order to understand the differences among contributions to different parties.
 
 ### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
-#### I noticed that the contributions come from many cities but many of them concentrate on one city - chicago. Similar situation happens to occupation.
+#### I noticed that the contributions come from many cities but many of them concentrate on one city - chicago. Similar situation happens to occupation. Additionally, the contributions received by candidates vary significantly, therefore I added a log transformation to make the plot easier to read.
 
 
 # Bivariate Plots Section
@@ -245,13 +252,13 @@ ggplot(aes(x=cand_nm_party, y = contb_receipt_amt),
 # Bivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
-#### One obvious pattern is that contribution amounts vary significantly across different candidate in terms of total, median, etc. Another pattern is that in general, more contributions go toward primary election rather than general election. More money is dedicated to make the candiates the party nominee perhaps since only one candidate from each party actually compete in the general election. 
+#### One obvious pattern is that contribution amounts vary significantly across different candidates in terms of total, median, etc. Another pattern is that in general, more contributions go toward primary election rather than general election. More money is dedicated to make the candiates the party nominee perhaps since only one candidate from each party actually competes in the general election. 
 
 ### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
 #### The amount of contributions made to candidates of different political party vary quite a lot, as we see in the boxplots. However, even though the candidates from the Democratic party received the lowest median contribution amount, they received the highest number of contributions, which drives up their total amount of contributions received. It is fair to say that Democratic candidates build their campaigns upon small donations in large quantities.
 
 ### What was the strongest relationship you found?
-#### Since we only have one numeric variable - contribution amount, we cannot find the correlation.
+#### Since we only have one numeric variable - contribution amount, we cannot find the correlations.
 
 
 # Multivariate Plots Section
@@ -280,10 +287,10 @@ ggplot(aes(x = cand_nm, y = contb_receipt_amt), data = PC) +
 # Multivariate Analysis
 
 ### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
-#### Seprating the bar plot of total contributions received by candidates into different political party definitely showed us a clear trend that Democratic candidates take smaller donations in a larger quantities, whereas Republican candidates takes bigger donations but in a smaller quantities.
+#### Seperating the bar plots of total contributions received by candidates into different political party definitely showed us a clear trend that Democratic candidates take smaller donations in a larger quantities, whereas Republican candidates takes bigger donations but in a smaller quantities.
 
 ### Were there any interesting or surprising interactions between features?
-#### I thought that the interaction between total contribution amount and election type is quite interesting. It confirms our intuition that only the major candidates who become the party nominees would receive donations for general election.
+#### I thought that the interactions between total contribution amount and election type is quite interesting. It confirms our intuition that only the major candidates who become the party nominees would receive donations for general election.
 
 ------
 
@@ -330,7 +337,24 @@ ggplot(aes(x = cand_nm, y = contb_receipt_amt), data = PC) +
 
 ### Description Three
 #### This plot demonstrates the total amount of contributions received for each candidate, faceted by political parties of the candidates.
+
+### Plot Four
+```{r echo=FALSE, Plot_Four}
+ggplot(aes(x=cand_nm, y = contb_receipt_amt), 
+        data=subset(PC, contb_receipt_amt>0)) +
+  geom_boxplot()+           
+  scale_y_log10() +
+  coord_flip() +
+  ggtitle('Boxplots of Contribution Amount Received by Each Candidate') + xlab('Candidate Name') +
+  ylab('Contribution Amount Received')
+```
+### Description Four
+#### The boxplots show 25%, 50% and 75% percentile of the contribution amount for each candidate, along with outliers.
 ------
 
 # Reflection
-### Through doing univariate, bivariate and multivariate analysis, we gained a lot of insights about the political contributions made to 2016 presidential candidates in Illinois, including which candidate received the most contributions and total amount of contributions, summary statistics of contributions for each candidate, differences in contributions across election types and political parties. We learnt that democratic candidates receive smaller donations but in a larger quantities, whereas the opposite is true for Republican candidates. However, one limitations of this analysis is that since most of the variables are categorical, finding correlations is difficult.
+### Through doing univariate, bivariate and multivariate analysis, we gained a lot of insights about the political contributions made to 2016 presidential candidates in Illinois, including which candidate received the most contributions and total amount of contributions, summary statistics of contributions for each candidate, differences in contributions across election types and political parties. 
+
+### One major finding is that democratic candidates receive smaller donations but in a larger quantities, whereas the opposite is true for Republican candidates. 
+
+### However, one limitations of this analysis is that since most of the variables are categorical, finding correlations is difficult.
