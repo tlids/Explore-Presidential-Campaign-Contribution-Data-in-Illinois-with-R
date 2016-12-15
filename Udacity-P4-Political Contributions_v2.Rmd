@@ -1,0 +1,512 @@
+An Analysis of Financial Contributions to Presidential Campaigns in Illinois with R - By Tiffany Li
+========================================================
+
+#### 
+
+### In this analysis, I will explore the financial contribution data in the state of Illinois for the 2016 presidential campaigns, using the the R language. The analysis involves multiple variables such as candidate's name and political party, contributor's city, employer and  occupation as well as the contribution amount. Data wrangling techniques are used to process and clean the data before the data exploration process. In the end, visualizations such as bar plot and boxplots reveal some interesting findings regarding these financial contributions in this critical presidential race.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+
+# install.packages("knitr", dependencies = T, repos="http://cran.rstudio.com/")
+library(knitr)
+library(ggplot2)
+require(ggplot2)
+library(dplyr)
+library(stringr)
+library(knitr)
+```
+
+```{r global_options, include=FALSE}
+# Set the global options so that warnings and notifications don't appear in knit HTML file
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r echo=TRUE, Load_the_Data}
+# Load the Data
+setwd("~/Desktop/Udacity Nanodegree/P4/data set")
+getwd()
+PC <- read.csv('P1-IL-2.csv', header = TRUE, fill = TRUE)
+```
+
+#### Now that we have successfully loaded the dataset and packages, we can exam the structure of the data.
+#### Also, the description of variables can be found in this link: ftp://ftp.fec.gov/FEC/Presidential_Map/2016/DATA_DICTIONARIES/CONTRIBUTOR_FORMAT.txt
+```{r echo=TRUE}
+# Exam the dataset
+str(PC)
+```
+
+#### By looking at the data types in the str() function, I detected 6 columns whose data types need to be converted. 'index' is just an id so we should change it from integer to character. 'contbr_zip' represents the zipcode of contributor so it should be factor instead of integer. 'contb_receipt_amt' is the amount contributed therefore needs to be represented in numeric form instead of factor. 'contb_receipt_dt' is the date when contribution was received and should be represented in date form. 'file_num' is the file number and should be converted from integer to factor. Lastly, I think character is a better way than factor to represent 'tran_id', which is transaction ID and has unique value for each row.
+```{r echo=TRUE}
+# Convert data types if neccessary
+PC$index <- as.character(PC$index)
+PC$contbr_zip <- as.factor(PC$contbr_zip)
+PC$contb_receipt_amt <- as.numeric(as.character(PC$contb_receipt_amt))
+PC$contb_receipt_dt <- as.Date(PC$contb_receipt_dt, format = "%d-%b-%y")
+PC$file_num <- as.factor(PC$file_num)
+PC$tran_id <- as.character(PC$tran_id)
+```
+
+#### Now that we have all the correct data types, we can begin the analysis.
+
+#### There are some candidates with very few contributions compared to others. As a result, plots or summary statistics for these candidate might be misleading because of the small data size. Therefore I will exclude these candidate for the rest of the analysis.
+```{r echo=TRUE}
+# Exclude candidates with fewer than 10 contributions
+table(PC$cand_nm)
+
+PC <- subset(PC, !(PC$cand_nm == "O'Malley, Martin Joseph" |
+                     PC$cand_nm == "Graham, Lindsey O." |
+                     PC$cand_nm == "Jindal, Bobby" |
+                     PC$cand_nm == "Santorum, Richard J." |
+                     PC$cand_nm == "McMullin, Evan")) 
+```
+
+#### It is also perhaps helpful to add the information about the political parties associated with the candidates. Therefore I will create a new variable for this purpose.
+```{r echo=TRUE}
+# Create a new variable for candidates' associated political parties by creating a new function rnParty and applying that function
+Democratic <- c('Clinton, Hillary Rodham', 
+                'Lessig, Lawrence', 
+                'Sanders, Bernard')
+
+rnParty <- function(x) {
+if(is.na(x)){
+  NA
+}else if(x %in% Democratic){
+  'D'
+}else if(x == 'Johnson, Gary'){
+  'L'
+}else if(x == 'Stein, Jill'){
+  'G'
+}else{
+  'R'
+}
+}
+   
+PC$cand_nm_party <- apply(PC['cand_nm'],1,rnParty)
+```
+
+# Univariate Plots Section
+### Let's understand the data using visualizations of single variable.
+
+
+#### How many contributions (by transaction) did each candidate receive?
+```{r echo=FALSE, Univariate_Plots_1}
+# Bar plot of total contributions (by transaction) for each candidate in descending order
+reorder_size <- function(x) {
+factor(x, levels = names(sort(table(x), decreasing = FALSE)))
+}
+
+ggplot(aes(x = reorder_size(cand_nm)), data = PC) +
+  geom_bar() +
+  coord_flip() +
+  scale_y_log10()
+```
+
+#### In terms of contribution transactions, Clinton received the most contributions, followed by Sanders, Cruz and Trump. Notice that we added a log10 scale to make the plot easier to read because the results vary significantly across candidates.
+
+
+#### How many contribution transactions are from each city in Illinois (only top results shown)?
+```{r echo=FALSE, Univariate_Plots_2}
+# Bar plot of total contributions (by transaction) from each city in descending order
+
+City_table <- table(PC$contbr_city)
+
+PC2 <- subset(PC, contbr_city %in% names(City_table[City_table>500]))
+
+ggplot(aes(x = reorder_size(contbr_city)), data =PC2) +
+  geom_bar() +
+  coord_flip() +
+  scale_y_log10()
+```
+
+#### We can observe that Chicago has the most contributions, followed by Evanston and Oak Park.
+
+
+#### How many contribution transactions are from each zipcode in Illinois (only top results shown)?
+```{r echo=FALSE, Univariate_Plots_3}
+# Bar plot of total contributions (by transaction) from each zipcode in descending order
+Zip_table <- table(PC$contbr_zip)
+
+PC3 <- subset(PC, contbr_zip %in% names(Zip_table[Zip_table>60]))
+
+ggplot(aes(x = reorder_size(contbr_zip)), data =PC3) +
+  geom_bar() +
+  coord_flip() +
+  scale_y_log10() 
+```
+
+#### As we can see from the plot, the top three zipcodes with the most contributions are 609501362, 600563912, 601302641.
+
+
+#### How many contribution transactions are from each contributor employer (only top results shown)?
+```{r echo=FALSE, Univariate_Plots_4}
+# Bar plot of total contributions (by transaction) from employer in descending order
+Employer_table <- table(PC$contbr_employer)
+
+PC4 <- subset(PC, contbr_employer %in% names(Employer_table[Employer_table>200]))
+
+ggplot(aes(x = reorder_size(contbr_employer)), data = PC4) +
+  geom_bar() +
+  coord_flip() +
+  scale_y_log10()
+```
+
+#### We can observe that the employer category with the most contribution (excluding N/A) is retired, followed by none and not employed. Universities such as Northwestern University and University of Chicago also are top in the list.
+
+
+#### How many contribution transactions are from each occupation (only top results shown)?
+```{r echo=FALSE, Univariate_Plots_5}
+# Bar plot of total contributions (by transaction) from occupation in descending order
+Occupation_table <- table(PC$contbr_occupation)
+
+PC5 <- subset(PC, contbr_occupation %in% names(Occupation_table[Occupation_table>300]))
+
+ggplot(aes(x = reorder_size(contbr_occupation)), data = PC5) +
+  geom_bar() +
+  coord_flip() +
+  scale_y_log10()
+```
+
+#### Retired shows up as the top occupations, followed by not employed, attorney, teacher and professor.
+
+
+#### What is first quantile, median and third quantile of the contribution amount?
+```{r echo=FALSE, Univariate_Plots_6}
+# Visualize the contribution amount for all candidates using boxplot
+summary(PC$contb_receipt_amt)
+
+ggplot(aes(x = 1, y = contb_receipt_amt), data = PC) +
+  geom_boxplot() +
+  scale_y_log10()
+```
+
+#### The first quantile of contribution is $15, median is $27 and the third quantile is $100.
+
+
+#### How many contributions were made to primary election and general election?
+```{r echo=FALSE, Univariate_Plots_7}
+# Display the number of contributions made to general and primary elections
+ggplot(aes(x = election_tp), data = PC) +
+  geom_bar()
+```
+
+#### We can see that 44,923 contributions were made to primary elections and 20,545 contributions were made to general elections. It is apparent that more contributions were made to primary elections than general elections.
+
+
+#### How many contributions were made to different political parties?
+```{r echo=FALSE, Univariate_Plots_8}
+# Visualize the number of contributions made to different political parties using bar plots
+ggplot(aes(x = reorder_size(cand_nm_party)), data = PC) +
+  geom_bar()
+```
+
+#### We can see that the Democratic party, despite having fewer candidates, received the most contributions, followed by the Republican party. Green party and libertarian party received much fewer contributions by comparison.
+
+
+#### Finally, an interesting thing to look at is the date when contribution was made. We can detect trends of when people make more contributions in the election cycle.
+
+#### To simplify the date variable, we can first extract out the year, month and day information from the contb_receipt_dt variable. Next, we create a plot using the month (only including 2016 data) to observe any trend for contributions over time.
+
+```{r echo=FALSE, Univariate_Plots_9}
+# Extract the year, month and day from date
+PC$year = as.numeric(format(PC$contb_receipt_dt, format = "%Y"))
+PC$month = as.numeric(format(PC$contb_receipt_dt, format = "%m"))
+PC$day = as.numeric(format(PC$contb_receipt_dt, format = "%d"))
+
+# Visualize the number of contributions made across months in 2016
+ggplot(aes(x = month), data = subset(PC, year == '2016')) +
+  geom_bar() +
+  scale_x_continuous(breaks = 1:12)
+```
+
+#### From this graph, it is clear that there is a trend in contributions made over time in 2016. The contributions started small in January and peaked in March. Then the contributions decreased and started increasing again in September, which led to the maximum in October. This makes sense because many candidates dropped out of the race in March, and general election was taken place in November so many contributors made donations in October hoping to make an impact at a critical time.
+
+
+# Univariate Analysis
+
+### What is/are the main feature(s) of interest in your dataset?
+#### I am mainly interested in the following features: candidate name and contribution receipt amount, since the most interesting topic is analyzing the amount of contributions received by candidates.
+
+### What other features in the dataset do you think will help support your investigation into your feature(s) of interest?
+#### Features like contributor's city, contributor's zipcode, contributor's employer, contributor's occupation, contribution date, election type, candidate's political party can provide further insights of the dataset. We can find relationships between these features and the features I mentioned in the last question. For example, we can try to determine if candidate's political party has an effect on contribution amount.
+
+### Did you create any new variables from existing variables in the dataset?
+#### I created a new variable cand_nm_party, which is the candidate's party information(e.g: Democrat, Republican etc) in order to understand the differences among contributions to different parties.
+
+### Of the features you investigated, were there any unusual distributions? Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+#### I noticed that the contributions come from many cities but many of them concentrate on one city - Chicago. Similar situation happens to occupation. Additionally, the contributions received by candidates vary significantly, therefore I added a log transformation to make the plot easier to read.
+
+
+# Bivariate Plots Section
+### We can investigate the dataset by looking at two variables. 
+#### First, let's find out the amount of contributions received by each candidate.
+```{r echo=FALSE, Bivariate_Plots_1}
+# Visualize contribution amount for each candidate using boxplot
+ggplot(aes(x=cand_nm, y = contb_receipt_amt), 
+        data=subset(PC, contb_receipt_amt>0)) +
+  geom_boxplot()+           
+  scale_y_log10() +
+  coord_flip()
+
+# Visualize the total contribution amount for each candidate using bar plot
+ggplot(aes(x = cand_nm, y = contb_receipt_amt), data = subset(PC, !is.na(PC$contb_receipt_amt))) +
+  stat_summary_bin(aes(y = contb_receipt_amt), 
+                   fun.y = 'sum', 
+                   geom = 'bar', 
+                   data = subset(PC, !is.na(PC$contb_receipt_amt))) +
+  coord_flip()
+```
+
+#### The boxplots of contribution amount are useful, as they show show 25%, 50% and 75% percentile of the contribution amount for each candidate, along with outliers. Christie had the highest median contribution amount and Clinton had the lowest median contribution amount.
+
+#### Similar to the univariate plot of contribution transactions of each candidate, we are seeing that Clinton received the highest total amount of contribution, followed by Sanders, Cruz and Trump.
+
+
+#### What are the total amounts of contribution from each city in Illinois (only top results shown)?
+```{r echo=FALSE, Bivariate_Plots_2}
+# Bar plot of total contributions (by amount) from each city in descending order
+City_table_2 <- table(PC$contbr_city)
+
+PC6 <- subset(PC, contbr_city %in% names(City_table_2[City_table_2>500]))
+
+ggplot(aes(x = reorder_size(contbr_city), y = contb_receipt_amt), data = PC6) +
+  stat_summary_bin(aes(y = contb_receipt_amt), 
+                   fun.y = 'sum', 
+                   geom = 'bar', 
+                   data = subset(PC6, !is.na(PC6$contb_receipt_amt))) +
+  coord_flip() 
+```
+
+#### Consistent with our intuition, Chicago has the highest contribution amount since the population is much larger, followed by Evanston, where Northwestern University is located, and Oak Park.
+  
+  
+#### What are the total amounts of contribution from each employer in Illinois (only top results shown)?
+```{r echo=FALSE, Bivariate_Plots_3}
+# Bar plot of total contributions (by transaction) from employer in descending order
+Employer_table_2 <- table(PC$contbr_employer)
+
+PC7 <- subset(PC, contbr_employer %in% names(Employer_table_2[Employer_table_2>540]))
+
+ggplot(aes(x = reorder_size(contbr_employer), y = contb_receipt_amt), data = PC7) +
+  stat_summary_bin(aes(y = contb_receipt_amt), 
+                   fun.y = 'sum', 
+                   geom = 'bar', 
+                   data = subset(PC7, !is.na(PC7$contb_receipt_amt))) +
+  coord_flip()
+```
+
+#### Besides categories like N/A, none, self-employed, contributors from Northwestern University also contributed significant amount.
+
+
+#### What are the total amounts of contribution from each occupation in Illinois (only top results shown)?
+```{r echo=FALSE, Bivariate_Plots_4}
+# Bar plot of total contributions (by transaction) from occupation in descending order
+Occupation_table_2 <- table(PC$contbr_occupation)
+
+PC8 <- subset(PC, contbr_occupation %in% names(Occupation_table[Occupation_table>600]))
+
+ggplot(aes(x = reorder_size(contbr_occupation), y = contb_receipt_amt), data = PC8) +
+  stat_summary_bin(aes(y = contb_receipt_amt), 
+                   fun.y = 'sum', 
+                   geom = 'bar', 
+                   data = subset(PC8, !is.na(PC8$contb_receipt_amt))) +
+  coord_flip()
+```
+
+#### From this graph we can see that the occupation that contributed the most amount is retired, followed by attorney, information requested and not employed.
+
+
+#### Another bivariate plot we can create is contributions for each candidate, filled with election type information.
+```{r echo=FALSE, Bivariate_Plots_5}
+# Visualize the number of contributions received by each candidate, with information of election type
+ggplot(aes(x = reorder_size(cand_nm)), data = PC) +
+  geom_bar(aes(fill = election_tp)) +
+  coord_flip() +
+  scale_y_log10() +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"),
+                    labels=c("N/A", "G2016", "P2016"))
+```
+
+#### Compared to the previous plot for contributions received by candidates, we obtain additional information about how many contributons were made to primary and general election in this plot.
+
+
+#### We can also investigate amount of contributions made to candidates of different political parties using boxplots.
+```{r echo=FALSE, Bivariate_Plots_6}
+ggplot(aes(x=cand_nm_party, y = contb_receipt_amt), 
+        data=subset(PC, contb_receipt_amt>0)) +
+  geom_boxplot()+           
+  scale_y_log10()
+```
+
+#### The boxplots show that the Libertarian party had the highest median contribution amount, followed by the Green Party, the Republican party and the Democratic party. However, we must keep in mind that the sample sizes for the Libertarian party and the Green party are much smaller.
+
+
+#### Following the analysis with the month variable in univariate analysis, we can continue to explore this variable using total contribution amount. 
+
+```{r echo=FALSE, Bivariate_Plots_7}
+# Visualize the total amount of contributions made across months in 2016
+PC9 = subset(PC, year == "2016")
+
+ggplot(aes(x = month, y = contb_receipt_amt), data = PC9) +
+  stat_summary_bin(aes(y = contb_receipt_amt), 
+                   fun.y = 'sum', 
+                   geom = 'bar', 
+                   data = PC9) +
+  scale_x_continuous(breaks = 1:12)
+```
+
+#### We see a similar trend compared to what we saw earlier: total amount of contributions moves with the election cycle, with peaks in March and October.
+
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+#### One obvious pattern is that contribution amounts vary significantly across different candidates in terms of total, median, etc. Another pattern is that in general, more contributions go toward primary election rather than general election. More money is dedicated to make the candiates the party nominee perhaps since only one candidate from each party actually competes in the general election. There is also an obvious trend in total contribution amount throughout the election cycle - more contributions were made when more candidates are involved or during critical times in the race.
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+#### The amount of contributions made to candidates of different political party vary quite a lot, as we see in the boxplots. However, even though the candidates from the Democratic party received the lowest median contribution amount, they received the highest number of contributions, which drives up their total amount of contributions received. It is fair to say that Democratic candidates build their campaigns upon small donations in large quantities.
+
+### What was the strongest relationship you found?
+#### Since we only have one numeric variable - contribution amount, we cannot find the correlations.
+
+
+# Multivariate Plots Section
+
+### We can also investigate the data set by looking at more than 2 variables
+
+#### Previously we looked at the amount of contributions received by each candidate, now we can add a facet by political party to the plot.
+```{r echo=FALSE, Multivariate_Plots_1}
+# Visualize contribution amount for each candidate using boxplot, faceted by candidate's political party
+ggplot(aes(x=cand_nm, y = contb_receipt_amt), 
+        data=subset(PC, contb_receipt_amt>0)) +
+  geom_boxplot()+           
+  scale_y_log10() +
+  coord_flip() +
+  facet_wrap(~cand_nm_party)
+```
+
+#### By adding a facet of candidate's political party, we can better compare contribution amount of candidates to others of their own political party. Within Democratic party, Lessig had the highest median contribution amount. Within Republican party, Christie had the highest median contribution amount. 
+
+#### Based on the previous bar plot of total contribution amount received for each candidate, I created a multivariate plot by filling the data with election type information. 
+```{r echo=FALSE, Multivariate_Plots_2}
+# Visualize the total contribution amount for each candidate, filled with election type information
+ggplot(aes(x = cand_nm, y = contb_receipt_amt), data = PC) +
+  stat_summary_bin(aes(y = contb_receipt_amt, fill = election_tp), 
+                   fun.y = 'sum', 
+                   geom = 'bar') +
+  coord_flip() +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"),
+                    labels=c("N/A", "G2016", "P2016"))
+```
+
+#### We learnt a great amount of information from this plot. In particular, Trump and Clinton are the only candidates with significant contribution amount to their general election campaign. This makes sense considering that they are the two major candidates remained in the general election period. It is also interesting to see that Trump received a lot more contributions during general election than primary election.
+
+#### To further explore the trends of contributions over time, we can add a filling of election type to the plot we made earlier, where it shows total amount of contributions across months in 2016.
+```{r echo=FALSE, Multivariate_Plots_3}
+# Visualize the total amount of contributions made across months in 2016
+ggplot(aes(x = month, y = contb_receipt_amt), data = PC9) +
+  stat_summary_bin(aes(y = contb_receipt_amt, 
+                   fill = election_tp),
+                   fun.y = 'sum', 
+                   geom = 'bar', 
+                   data = PC9) +
+  scale_x_continuous(breaks = 1:12) +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"),
+                    labels=c("N/A", "G2016", "P2016"))
+```
+
+#### Besides showing us the trend over time, this plot also demonstrates that most of the contributions were made for primary election from January to June, and most of the contributions were made for general election from August to October. Contributions in July were a mixture of primary election and general election donations, as the primary election ended in the middle of July. This confirms our intuition since primary election ended in mid-July and general election campaign started right afterwards.
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+#### Seperating the bar plots of total contributions received by candidates into different political party and looking at the boxplots of contribution amounts of candidates from different political parties definitely showed us a clear trend that Democratic candidates take smaller donations in a larger quantities, whereas Republican candidates takes bigger donations but in a smaller quantities.
+
+### Were there any interesting or surprising interactions between features?
+#### I thought that the interactions between total contribution amount and election type is quite interesting. It confirms our intuition that only the major candidates who become the party nominees would receive donations for general election. We also saw that contributions shifted from primary election to general election in July as the race transitioned from primary election to general election at that time.
+
+------
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_One}
+# Visualize the total amount of contributions made across months in 2016
+plot.title = 'Bar Plots of Total Contribution Amount Received for Each Month in 2016'
+plot.subtitle = 'With Election Type Information'
+
+ggplot(aes(x = month, y = contb_receipt_amt), data = PC9) +
+  stat_summary_bin(aes(y = contb_receipt_amt, 
+                   fill = election_tp),
+                   fun.y = 'sum', 
+                   geom = 'bar', 
+                   data = PC9) +
+  scale_x_continuous(breaks = 1:12) +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"),
+                    labels=c("N/A", "G2016", "P2016")) +
+  ggtitle(bquote(atop(.(plot.title), 
+                      atop(italic(.(plot.subtitle)), "")))) +
+  ylab('Total Contribution Amount Received (in USD)') +
+  xlab('Month in 2016')
+```
+
+### Description One
+#### This plot demonstrates the total amount of contributions across different months in 2016, with election type information. The total contribution amount started small in January and peaked in March, then it decreased and started increasing again in September, which led to the maximum in October. This makes sense because many candidates dropped out of the race in March, and general election was taken place in November so many contributors made donations in October hoping to make an impact at a critical time. In addition, we see that most of the contributions were made for primary election from January to June, and most of the contributions were made for general election from August to October. Contributions in July were a mixture of primary election and general election donation, as the primary election ended in the middle of July. This confirms our intuition since primary election ended in mid-July and general election campaign started right afterwards. 
+
+### Plot Two
+```{r echo=FALSE, Plot_Two}
+plot.title = 'Bar Plots of Total Contribution Amount Received for Each Candidate'
+plot.subtitle = 'With Election Type Information'
+
+ggplot(aes(x = cand_nm, y = contb_receipt_amt), data = PC) +
+  stat_summary_bin(aes(y = contb_receipt_amt, 
+                       fill = election_tp), 
+                       fun.y = 'sum', 
+                       geom = 'bar') +
+  coord_flip() +
+  ggtitle(bquote(atop(.(plot.title), 
+                      atop(italic(.(plot.subtitle)), "")))) +
+  ylab('Total Contribution Amount Received (in USD)') +
+  xlab('Candidate Name') +
+  guides(fill=guide_legend(title="Election Type")) +
+  scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9"),
+                    labels=c("N/A", "G2016", "P2016"))
+```
+
+### Description Two
+#### This plot demonstrates the total amount of contributions received for each candidate, filled with election type information (general or primary). It shows that Clinton received the highest total amount of contributions and Clinton and Trump were the only candidates with major general election contributions which is consistent with our intuition.
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+ggplot(aes(x=cand_nm, y = contb_receipt_amt), 
+        data=subset(PC, contb_receipt_amt>0)) +
+  geom_boxplot()+           
+  scale_y_log10() +
+  coord_flip() +
+  ggtitle('Boxplots of Contribution Amount Received by Each Candidate') + xlab('Candidate Name') +
+  ylab('Contribution Amount Received (in USD)')
+```
+
+### Description Three
+
+#### The boxplots show 25%, 50% and 75% percentile of the contribution amount for each candidate, along with outliers. We can see that Christie had the highest median amount of contributions amongest all candidates.
+
+------
+
+# Reflection
+
+### By doing univariate, bivariate and multivariate analysis, we gained a lot of insights about the political contributions made to 2016 presidential candidates in Illinois, including which candidate received the most contributions and total amount of contributions, summary statistics of contributions for each candidate, differences in contributions across election types, political parties and time. 
+
+### One major finding is that Democratic candidates received smaller donations but in a larger quantities, whereas the opposite is true for Republican candidates. Another important finding is that contribution amount varies over time as more contributions were made when more candidates are involved or during critical times in the race.
+
+### I discovered that bar plots work very well for this particular analysis since a lot of the variables are categorical.
+
+### However, one limitation of this analysis is that since most of the variables are categorical, finding correlations is difficult. It was also challenging to transform visualizations in order to present in a manner that convey the message clearly and concisely.
+
+### A way to improve this analysis in the future is to incorporate more demographic information of the contributor, if possible. For example, we can conjecture the gender of the contributor based on the first name, then analyze if the contribution behavior between males and females are different, such as the contribution amount and the candidates they tend to contribute to. If I can use more time, I would also add a choropleth map with the zipcode information to enhance the visualization.
